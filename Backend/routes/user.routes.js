@@ -1,45 +1,42 @@
 import express from 'express';
 import User from '../models/user.model.js';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
-const options =
-{
-    maxAge: 10* 60 * 1000,
+import bcrypt from 'bcryptjs';
+
+const options = {
+    maxAge: 10 * 60 * 1000,
     httpOnly: true
-}
+};
 
 const router = express.Router();
- 
-router.post("/logout", (req, res) => {
-    
-    res.clearCookie('token'); 
 
-    // Optionally, you can send a success message
+router.post("/logout", (req, res) => {
+    res.clearCookie('token'); 
     res.status(200).json({ message: "Logout successful!" });
 });
 
-
 router.post('/register', async (req, res) => {
-    const existedUser= await User.findOne({email: req.body.email});
-    if(existedUser){
+    const existedUser = await User.findOne({ email: req.body.email });
+    if (existedUser) {
         return res.status(400).json({
-            status : 400,
+            status: 400,
             message: "User already exists"
         });
     }
+
     const { username, email, password, phoneNo, address } = req.body;
-    const salt = await bcrypt.genSaltSync(10);
-    const hashedPassword = await bcrypt.hashSync(password, salt);
-   
-    const createdUser = await new User({
+    const salt = bcrypt.genSaltSync(10);
+    const hashedPassword = bcrypt.hashSync(password, salt);
+
+    const createdUser = new User({
         username,
         email,
         password: hashedPassword,
         phoneNo,
         address,
     });
- 
-    const token = await jwt.sign({
+
+    const token = jwt.sign({
         id: createdUser._id,
         email: email,
     }, process.env.SECRET_KEY);
@@ -48,7 +45,7 @@ router.post('/register', async (req, res) => {
     await createdUser.save();
 
     res.status(201).json({
-        status : 201,
+        status: 201,
         message: "User created successfully",
         data: createdUser
     });
@@ -59,7 +56,7 @@ router.post('/login', async (req, res) => {
 
     try {
         if (email === process.env.adminMail && password === process.env.adminPassword) {
-            const token = await jwt.sign({
+            const token = jwt.sign({
                 id: process.env.adminId,
                 email: process.env.adminMail,
             }, process.env.SECRET_KEY);
@@ -82,7 +79,7 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = bcrypt.compareSync(password, user.password);
 
         if (!isMatch) {
             return res.status(401).json({
@@ -114,6 +111,5 @@ router.post('/login', async (req, res) => {
         });
     }
 });
-
 
 export default router;
